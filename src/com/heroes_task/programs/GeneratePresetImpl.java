@@ -17,7 +17,7 @@ public class GeneratePresetImpl implements GeneratePreset {
         int currentPoints = 0;
 
         // Размер игрового поля
-        final int WIDTH = 27;
+        final int WIDTH = 3;
         final int HEIGHT = 21;
 
         // Множество занятых координат

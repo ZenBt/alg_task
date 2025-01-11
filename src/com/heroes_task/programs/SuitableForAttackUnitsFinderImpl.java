@@ -7,6 +7,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+
+// R - количество строк, C - количество элементов в строке
+// обработка всех строк O(R*C)
+
+
 public class SuitableForAttackUnitsFinderImpl implements SuitableForAttackUnitsFinder {
 
     @Override

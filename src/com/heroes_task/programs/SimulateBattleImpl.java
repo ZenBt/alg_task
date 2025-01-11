@@ -9,6 +9,14 @@ import com.battle.heroes.army.Unit;
 import com.battle.heroes.army.programs.PrintBattleLog;
 import com.battle.heroes.army.programs.SimulateBattle;
 
+
+// Проверка живых юнитов: O(P).
+// Сортировка юнитов: O(NlogN+MlogM).
+// Симуляция раунда: O(P)
+// Удаление мертвых юнитов: O(P)
+
+// Итого общая сложность O(P*P+P*logP)
+
 public class SimulateBattleImpl implements SimulateBattle {
     private PrintBattleLog printBattleLog; // Позволяет логировать. Использовать после каждой атаки юнита
 

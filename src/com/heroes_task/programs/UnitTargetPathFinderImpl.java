@@ -6,6 +6,13 @@ import com.battle.heroes.army.programs.UnitTargetPathFinder;
 
 import java.util.*;
 
+// На каждом узле мы храним расстояние. Теоретически, количество узлов равно числу клеток на поле: width*height
+// Инициализация занимает O(width*height)
+// Каждый узел добавляется в очередь с приоритетом максимум один раз
+// Очередь с приоритетом (PriorityQueue) использует вставку и извлечение с логарифмической сложностью: O(log(число узлов в очереди)).
+// Каждый узел имеет максимум 4 соседей (по направлению DIRECTIONS).
+// Проверка соседей добавляет O(1) операций для каждого соседа.
+// Общая сложность O(width*height * log(width*height))
 
 public class UnitTargetPathFinderImpl implements UnitTargetPathFinder {
     private static final int WIDTH = 27;
@@ -14,7 +21,6 @@ public class UnitTargetPathFinderImpl implements UnitTargetPathFinder {
 
     @Override
     public List<Edge> getTargetPath(Unit attackUnit, Unit targetUnit, List<Unit> existingUnitList) {
-        // Общая сложность O(width*height * log(width*height))
         Set<String> occupiedCells = getOccupiedCells(existingUnitList, attackUnit, targetUnit);
 
         // Карта расстояний

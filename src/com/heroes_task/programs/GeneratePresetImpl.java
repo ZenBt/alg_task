@@ -50,8 +50,8 @@ public class GeneratePresetImpl implements GeneratePreset {
 
                 // Клонируем юнита с новой уникальной координатой
                 Unit newUnit = new Unit(
-                        unit.getName(),
                         unit.getUnitType() + " " + unitCount,
+                        unit.getUnitType(),
                         unit.getHealth(),
                         unit.getBaseAttack(),
                         unit.getCost(),

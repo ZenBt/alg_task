@@ -4,140 +4,112 @@ import com.battle.heroes.army.Unit;
 import com.battle.heroes.army.programs.Edge;
 import com.battle.heroes.army.programs.UnitTargetPathFinder;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
+
 
 public class UnitTargetPathFinderImpl implements UnitTargetPathFinder {
     private static final int WIDTH = 27;
     private static final int HEIGHT = 21;
-
+    private static final int[][] DIRECTIONS = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
     @Override
     public List<Edge> getTargetPath(Unit attackUnit, Unit targetUnit, List<Unit> existingUnitList) {
-        // Проверяем, находятся ли юниты в пределах игрового поля
-        if (!isWithinBounds(attackUnit.getxCoordinate(), attackUnit.getyCoordinate()) ||
-                !isWithinBounds(targetUnit.getxCoordinate(), targetUnit.getyCoordinate())) {
-            return Collections.emptyList();
+        // Общая сложность O(width*height * log(width*height))
+        Set<String> occupiedCells = getOccupiedCells(existingUnitList, attackUnit, targetUnit);
+
+        // Карта расстояний
+        Map<Node, Integer> distances = new HashMap<>();
+        Map<Node, Node> previous = new HashMap<>();
+        PriorityQueue<Node> queue = new PriorityQueue<>(Comparator.comparingInt(distances::get));
+
+        // Инициализируем стартовый узел
+        Node startNode = new Node(attackUnit.getxCoordinate(), attackUnit.getyCoordinate());
+        distances.put(startNode, 0);
+        queue.add(startNode);
+
+        while (!queue.isEmpty()) {
+            Node current = queue.poll();
+
+            // Если достигли целевой точки, прерываем цикл
+            if (current.getX() == targetUnit.getxCoordinate() && current.getY() == targetUnit.getyCoordinate()) {
+                break;
+            }
+
+            for (int[] dir : DIRECTIONS) {
+                int neighborX = current.getX() + dir[0];
+                int neighborY = current.getY() + dir[1];
+                Node neighbor = new Node(neighborX, neighborY);
+
+                if (isValid(neighborX, neighborY, occupiedCells)) {
+                    int newDistance = distances.getOrDefault(current, Integer.MAX_VALUE) + 1;
+                    if (newDistance < distances.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                        distances.put(neighbor, newDistance);
+                        previous.put(neighbor, current);
+                        queue.add(neighbor);
+                    }
+                }
+            }
         }
 
-        // Множество занятых клеток
+        return constructPath(previous, attackUnit, targetUnit);
+    }
+
+    private Set<String> getOccupiedCells(List<Unit> existingUnitList, Unit attackUnit, Unit targetUnit) {
         Set<String> occupiedCells = new HashSet<>();
         for (Unit unit : existingUnitList) {
-            if (unit.isAlive()) {
+            if (unit.isAlive() && unit != attackUnit && unit != targetUnit) {
                 occupiedCells.add(unit.getxCoordinate() + "," + unit.getyCoordinate());
             }
         }
-
-        // Очередь с приоритетом для алгоритма Дейкстры
-        PriorityQueue<EdgeNode> queue = new PriorityQueue<>(Comparator.comparingInt(EdgeNode::getDistance));
-        Map<String, EdgeNode> nodes = new HashMap<>();
-
-        // Инициализация начальной точки
-        Edge startEdge = new Edge(attackUnit.getxCoordinate(), attackUnit.getyCoordinate());
-        Edge targetEdge = new Edge(targetUnit.getxCoordinate(), targetUnit.getyCoordinate());
-
-        EdgeNode startNode = new EdgeNode(startEdge, 0, null);
-        nodes.put(edgeKey(startEdge), startNode);
-        queue.add(startNode);
-
-        // Алгоритм Дейкстры
-        while (!queue.isEmpty()) {
-            EdgeNode current = queue.poll();
-
-            // Если достигли цели, строим путь
-            if (current.getEdge().getX() == targetEdge.getX() && current.getEdge().getY() == targetEdge.getY()) {
-                return constructPath(current);
-            }
-
-            // Обрабатываем соседние клетки
-            for (int[] direction : new int[][]{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}) {
-                int newX = current.getEdge().getX() + direction[0];
-                int newY = current.getEdge().getY() + direction[1];
-                Edge neighborEdge = new Edge(newX, newY);
-                String neighborKey = edgeKey(neighborEdge);
-
-                // Проверяем границы, препятствия и уже посещенные клетки
-                if (!isWithinBounds(newX, newY) || occupiedCells.contains(neighborKey)) {
-                    continue;
-                }
-
-                int newDistance = current.getDistance() + 1;
-                EdgeNode neighborNode = nodes.getOrDefault(neighborKey, new EdgeNode(neighborEdge, Integer.MAX_VALUE, null));
-
-                if (newDistance < neighborNode.getDistance()) {
-                    neighborNode.setDistance(newDistance);
-                    neighborNode.setPrevious(current);
-                    nodes.put(neighborKey, neighborNode);
-                    queue.add(neighborNode);
-                }
-            }
-        }
-
-        // Если путь не найден
-        return Collections.emptyList();
+        return occupiedCells;
     }
 
-    // Проверяем, находится ли точка в пределах игрового поля
-    private boolean isWithinBounds(int x, int y) {
-        return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
+    private boolean isValid(int x, int y, Set<String> occupiedCells) {
+        return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT && !occupiedCells.contains(x + "," + y);
     }
 
-    // Построение пути из цепочки узлов
-    private List<Edge> constructPath(EdgeNode targetNode) {
+    private List<Edge> constructPath(Map<Node, Node> previous, Unit attackUnit, Unit targetUnit) {
         List<Edge> path = new ArrayList<>();
-        EdgeNode current = targetNode;
+        Node targetNode = new Node(targetUnit.getxCoordinate(), targetUnit.getyCoordinate());
+        Node current = targetNode;
 
         while (current != null) {
-            path.add(current.getEdge());
-            current = current.getPrevious();
+            path.add(new Edge(current.getX(), current.getY()));
+            current = previous.get(current);
         }
 
         Collections.reverse(path);
         return path;
     }
 
-    // Генерация ключа для карты узлов
-    private String edgeKey(Edge edge) {
-        return edge.getX() + "," + edge.getY();
-    }
+    private static class Node {
+        private final int x;
+        private final int y;
 
-    // Внутренний класс для хранения информации о вершинах графа
-    private static class EdgeNode {
-        private final Edge edge;
-        private int distance;
-        private EdgeNode previous;
-
-        public EdgeNode(Edge edge, int distance, EdgeNode previous) {
-            this.edge = edge;
-            this.distance = distance;
-            this.previous = previous;
+        public Node(int x, int y) {
+            this.x = x;
+            this.y = y;
         }
 
-        public Edge getEdge() {
-            return edge;
+        public int getX() {
+            return x;
         }
 
-        public int getDistance() {
-            return distance;
+        public int getY() {
+            return y;
         }
 
-        public void setDistance(int distance) {
-            this.distance = distance;
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Node node = (Node) o;
+            return x == node.x && y == node.y;
         }
 
-        public EdgeNode getPrevious() {
-            return previous;
-        }
-
-        public void setPrevious(EdgeNode previous) {
-            this.previous = previous;
+        @Override
+        public int hashCode() {
+            return Objects.hash(x, y);
         }
     }
 }
